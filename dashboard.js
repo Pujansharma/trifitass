@@ -28,7 +28,8 @@ document.getElementById('usernameDisplay').textContent = username;
 function fetchBalance() {
     apiRequest('/balance', 'GET', null, { 'Authorization': `Bearer ${token}` })
         .then(response => {
-            document.getElementById('balance').textContent = response.balance;
+            document.getElementById('balance').textContent = response.balance.toFixed(2);
+
             document.getElementById('accNumber').textContent = response.accountNumber;
         })
         .catch(err => {
@@ -85,37 +86,44 @@ document.getElementById('withdrawForm').addEventListener('submit', function (e) 
 });
 
 // Transfer
-// Transfer
 document.getElementById('transferForm').addEventListener('submit', function (e) {
     e.preventDefault();
+
     const recipientAccountNumber = document.getElementById('recipientAccountNumber').value;
     const pin = document.getElementById('pin').value;
     const amount = parseFloat(document.getElementById('amount').value);
-    const feePercentage = 0.02; // Example: 2% transaction fee
-    const transferFee = amount * feePercentage; // Calculate fee
-    const totalDeduction = amount + transferFee; // Total to be deducted from sender
+    const feePercentage = 0.02; 
+    const transferFee = amount * feePercentage; 
+    const netAmount = amount - transferFee;    
+    const transferBalance = parseFloat(document.getElementById('balance').value);
+ // Sender's balance
 
+    // Ensure the sender has enough balance to cover the transfer
+    if (transferBalance < amount) {
+        alert('Insufficient balance to cover the transfer.');
+        return;
+    }
+
+    // Validate that all required fields are filled
     if (!recipientAccountNumber || !pin || !amount) {
         alert('Please fill in all the fields.');
         return;
     }
 
-    if (totalDeduction > parseFloat(document.getElementById('balance').textContent)) {
-        alert(`Insufficient balance. Total required: ₹${totalDeduction.toFixed(2)}`);
-        return;
-    }
-
-    // API request for transfer
+    // Make the API request to transfer money
     apiRequest('/transfer', 'POST', { 
         recipientAccountNumber, 
         pin, 
-        amount,
-        fee: transferFee 
-    }, { 'Authorization': `Bearer ${token}` })
+        amount: netAmount // Send the net amount to the recipient (₹4.90)
+    }, { 
+        'Authorization': `Bearer ${token}` 
+    })
         .then(response => {
-            // alert(`Transfer Successful! ₹${amount} sent to account ${recipientAccountNumber}. Fee: ₹${transferFee.toFixed(2)}`);
-            fetchBalance(); // Update the sender's balance after transfer
-            document.getElementById('transferSuccess').textContent = `Transfer Successful! ₹${amount} sent to account ${recipientAccountNumber}. Fee: ₹${transferFee.toFixed(2)} New Balance: ₹${response.senderBalance}`;
+            // Display the transfer success message with fee details
+            document.getElementById('transferSuccess').textContent = 
+    `Fee: ₹${transferFee.toFixed(2)} | ₹${amount.toFixed(2)} Transfer Successful! Recipient Received: ₹${netAmount.toFixed(2)}`;
+
+            fetchBalance(); // Assuming this updates the UI with the new balance
             document.getElementById('transferSuccess').style.display = 'block';
         })
         .catch(err => {
@@ -136,11 +144,14 @@ function openMiniStatementModal() {
                 const row = document.createElement('tr');
                 const date = new Date(transaction.timestamp);
                 const formattedDate = `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
-
+                const amount = transaction.amount;  // Assuming transaction.amount contains the original amount
+                const feePercentage = 0.02;  // 2% fee
+                const fee = amount * feePercentage;  // Calculate the fee
+                const totalAmount = amount + fee;
                 row.innerHTML = `
                     <td>${formattedDate}</td>
                     <td>${transaction.type}</td>
-                    <td>₹${transaction.amount.toFixed(2)}</td>
+                    <td>₹${amount.toFixed(2)} (Fee: ₹${fee.toFixed(2)}) | Total: ₹${totalAmount.toFixed(2)}</td>
                     <td>₹${transaction.balanceAfter.toFixed(2)}</td>
                 `;
                 miniStatementBody.appendChild(row);
