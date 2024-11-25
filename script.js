@@ -1,98 +1,112 @@
+document.addEventListener("DOMContentLoaded", function () {
+    const BASE_URL = 'https://trifit-2.onrender.com/api/users';
 
-    $(document).ready(function() {
-      // JavaScript (inside script.js or inline)
-$("#registerForm").submit(function(event) {
-    event.preventDefault();
-    
-    // Get form data
-    const username = $("#username").val();
-    const pin = $("#pin").val();
-    const initialDeposit = $("#initialDeposit").val();
-    
-    // Show the loading spinner
-    $("#loader").show(); // Show the loader spinner
-    $("#registerMessage").html(""); // Clear previous messages
-    
-    $.ajax({
-        url: 'https://trifit-2.onrender.com/api/users/register',
-        method: 'POST',
-        data: JSON.stringify({ username, pin, initialDeposit }),
-        contentType: 'application/json',
-        success: function(response) {
-            $("#loader").hide(); // Hide the loader spinner
-            $("#registerMessage").html(`<div class="alert alert-success">${response.message}</div>`);
-            setTimeout(() => {
-                window.location.href = 'login.html';
-            }, 2000); // Delay for UX
-        },
-        error: function(xhr) {
-            $("#loader").hide(); // Hide the loader spinner
-            $("#registerMessage").html(`<div class="alert alert-danger">${xhr.responseJSON.error}</div>`);
+    // Function to handle API requests
+    async function apiRequest(endpoint, method, data) {
+        const url = `${BASE_URL}${endpoint}`;
+        const options = {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        };
+
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error);
+            }
+            return await response.json();
+        } catch (error) {
+            throw error;
         }
-    });
-});
-
-        
-
-
-    let attemptsLeft = 3; 
-
-$("#loginForm").submit(function(event) {
-    event.preventDefault();
-    const username = $("#loginUsername").val();
-    const pin = $("#loginPin").val();
-
-    if (attemptsLeft <= 0) {
-        $("#loginMessage").html('<div class="alert alert-danger">Your account is locked. Please try again later.</div>');
-        return;
     }
 
- 
-    $("#loader").show();
-    $("#loginMessage").html(''); 
+    // Handle registration
+    const registerForm = document.getElementById("registerForm");
+    if (registerForm) {
+        registerForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
 
-    $.ajax({
-        url: 'https://trifit-2.onrender.com/api/users/login',
-        method: 'POST',
-        data: JSON.stringify({ username, pin }),
-        contentType: 'application/json',
-        success: function(response) {
+            const username = document.getElementById("username").value;
+            const pin = document.getElementById("pin").value;
+            const initialDeposit = document.getElementById("initialDeposit").value;
 
-            $("#loader").hide();
+            const loader = document.getElementById("loader");
+            const registerMessage = document.getElementById("registerMessage");
 
-            localStorage.setItem('token', response.token);
-            localStorage.setItem('username', username);
+            loader.style.display = "block";
+            registerMessage.innerHTML = "";
 
-            $("#loginMessage").html('<div class="alert alert-success">Login successful!</div>');
+            try {
+                const response = await apiRequest('/register', 'POST', { username, pin, initialDeposit });
+                loader.style.display = "none";
+                registerMessage.innerHTML = `<div class="alert alert-success">${response.message}</div>`;
 
-       
-            window.location.href = 'dashboard.html';
-        },
-        error: function(xhr) {
-      
-            $("#loader").hide();
+                setTimeout(() => {
+                    window.location.href = 'login.html';
+                }, 2000);
+            } catch (error) {
+                loader.style.display = "none";
+                registerMessage.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            }
+        });
+    }
 
-      
-            if (xhr.responseJSON.error) {
-                attemptsLeft--; 
+    // Handle login
+    const loginForm = document.getElementById("loginForm");
+    let attemptsLeft = 3;
+
+    if (loginForm) {
+        loginForm.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const username = document.getElementById("loginUsername").value;
+            const pin = document.getElementById("loginPin").value;
+
+            const loader = document.getElementById("loader");
+            const loginMessage = document.getElementById("loginMessage");
+
+            if (attemptsLeft <= 0) {
+                loginMessage.innerHTML = '<div class="alert alert-danger">Your account is locked. Please try again later.</div>';
+                return;
+            }
+
+            loader.style.display = "block";
+            loginMessage.innerHTML = "";
+
+            try {
+                const response = await apiRequest('/login', 'POST', { username, pin });
+                loader.style.display = "none";
+
+                localStorage.setItem('token', response.token);
+                localStorage.setItem('username', username);
+
+                loginMessage.innerHTML = '<div class="alert alert-success">Login successful!</div>';
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                loader.style.display = "none";
+                attemptsLeft--;
 
                 if (attemptsLeft <= 0) {
-
-                    $("#loginMessage").html('<div class="alert alert-danger">Your account is locked. Please try again later.</div>');
+                    loginMessage.innerHTML = '<div class="alert alert-danger">Your account is locked. Please try again later.</div>';
                 } else {
-                    // Show the remaining attempts
-                    $("#loginMessage").html(`<div class="alert alert-danger">${xhr.responseJSON.error}. You have ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left.</div>`);
+                    loginMessage.innerHTML = `<div class="alert alert-danger">${error.message}. You have ${attemptsLeft} attempt${attemptsLeft === 1 ? '' : 's'} left.</div>`;
                 }
             }
-        }
-    });
-});
+        });
+    }
 
-    $("#logoutButton").click(function() {
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        $("#dashboard").hide();
-        $("#login").show();
-    });
+    // Handle logout
+    const logoutButton = document.getElementById("logoutButton");
+    if (logoutButton) {
+        logoutButton.addEventListener("click", function () {
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            document.getElementById("dashboard").style.display = "none";
+            document.getElementById("login").style.display = "block";
+        });
+    }
 });
-
