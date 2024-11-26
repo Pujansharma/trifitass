@@ -151,7 +151,7 @@ function openMiniStatementModal() {
                 row.innerHTML = `
                     <td>${formattedDate}</td>
                     <td>${transaction.type}</td>
-                    <td>₹${amount.toFixed(2)} (Fee: ₹${fee.toFixed(2)}) | Total: ₹${totalAmount.toFixed(2)}</td>
+                    <td>₹${amount.toFixed(2)}</td>
                     <td>₹${transaction.balanceAfter.toFixed(2)}</td>
                 `;
                 miniStatementBody.appendChild(row);
